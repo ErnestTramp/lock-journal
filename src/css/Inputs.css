@@ -1,0 +1,15 @@
+.inputsWrapper {
+    width: 49%;
+    height: 100%;
+}
+
+.tabsWrapper {
+    height: calc(100% - 3rem);
+}
+
+.newText {
+    width: 100%;
+    height: 100%;
+    resize: none;
+
+}
