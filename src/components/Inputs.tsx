@@ -3,7 +3,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -11,6 +10,7 @@ import {
 import { Button } from "./ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useEffect, useState } from "react";
+import Entries from "./Entries";
 
 export default function Inputs() {
   const [currentDate, setCurrentDate] = useState<string>();
@@ -53,18 +53,7 @@ export default function Inputs() {
           </Card>
         </TabsContent>
         <TabsContent value="past" className="h-full">
-          <Card className="h-full flex flex-col">
-            <CardHeader>
-              <CardTitle>Card Title</CardTitle>
-              <CardDescription>Card Description</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p>Card Content</p>
-            </CardContent>
-            <CardFooter className="mt-auto">
-              <p>Card Footer</p>
-            </CardFooter>
-          </Card>
+          <Entries></Entries>
         </TabsContent>
       </Tabs>
     </div>
