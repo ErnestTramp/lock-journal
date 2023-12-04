@@ -3,8 +3,8 @@
 }
 
 .lockedEntry {
-    width: 49.5%;
-    background-color: rgb(49, 44, 44);
+    width: 49.5% !important;
+    background-color: rgb(49, 44, 44) !important;
     cursor: not-allowed;
 }
 
@@ -14,4 +14,8 @@
     flex-wrap: wrap;
     justify-content: space-between;
     row-gap: 1vh;
+}
+
+.bottomHalf {
+    padding-top: .5rem !important;
 }

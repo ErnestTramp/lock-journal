@@ -21,7 +21,8 @@ import {
 import { FaLock, FaLockOpen } from "react-icons/fa";
 import { Button } from "./ui/button";
 import "@/css/Entries.css";
-import { entries } from "@/entries";
+import { collection, getDocs } from "firebase/firestore";
+import { auth, db } from "@/Firebase";
 
 interface Entry {
   created: Date;
@@ -30,20 +31,43 @@ interface Entry {
 }
 
 export default function Entries(): JSX.Element {
+  const [entries, setEntries] = useState<Entry[]>([]);
   const [lockedEntries, setLockedEntries] = useState<Entry[]>([]);
   const [unlockedEntries, setUnlockedEntries] = useState<Entry[]>([]);
 
   useEffect(() => {
     const currentDate = new Date();
 
-    // Convert date strings to Date objects and sort the entries
-    const sortedEntries = entries
-      .map((entry) => ({
-        ...entry,
-        created: parseDateString(entry.created),
-        locked: parseDateString(entry.locked),
-      }))
-      .sort((a, b) => a.locked.getTime() - b.locked.getTime());
+    async function fetchEntries() {
+      if (auth.currentUser) {
+        const entryCollection = collection(
+          db,
+          "users",
+          auth.currentUser.uid,
+          "entries"
+        );
+        const querySnapshot = await getDocs(entryCollection);
+        const fetchedEntries: Entry[] = [];
+
+        querySnapshot.forEach((doc) => {
+          const entryData = doc.data();
+          fetchedEntries.push({
+            text: entryData.text,
+            created: entryData.created.toDate(), // Convert Firestore timestamp to Date
+            locked: entryData.locked.toDate(), // Convert Firestore timestamp to Date
+          });
+        });
+
+        setEntries(fetchedEntries);
+      }
+    }
+
+    fetchEntries();
+
+    // Sort the entries based on the locked date
+    const sortedEntries = entries.sort(
+      (a, b) => a.locked.getTime() - b.locked.getTime()
+    );
 
     // Separate entries based on locked date
     const locked = sortedEntries.filter((entry) => entry.locked > currentDate);
@@ -53,7 +77,7 @@ export default function Entries(): JSX.Element {
 
     setLockedEntries(locked);
     setUnlockedEntries(unlocked);
-  }, []);
+  }, [entries]);
 
   return (
     <Card className="h-full flex flex-col">
@@ -68,17 +92,21 @@ export default function Entries(): JSX.Element {
             lockedEntries.length === 0 ? (
               <CardDescription>No entries to show!</CardDescription>
             ) : (
-              lockedEntries.map((entry) => (
-                <Alert className="text-left" variant="destructive">
-                  <FaLock />
+              <div className="lockedWrapper">
+                {lockedEntries.map((entry) => (
+                  <Alert className="text-left lockedEntry">
+                    <FaLock />
 
-                  <AlertTitle>{entry.created.toLocaleDateString()}</AlertTitle>
-                  <AlertDescription>
-                    This entry is locked until{" "}
-                    {entry.locked.toLocaleDateString()}
-                  </AlertDescription>
-                </Alert>
-              ))
+                    <AlertTitle>
+                      {entry.created.toLocaleDateString()}
+                    </AlertTitle>
+                    <AlertDescription>
+                      This entry is locked until{" "}
+                      {entry.locked.toLocaleDateString()}
+                    </AlertDescription>
+                  </Alert>
+                ))}
+              </div>
             )
           ) : (
             unlockedEntries.map((entry) => (
@@ -117,7 +145,7 @@ export default function Entries(): JSX.Element {
             ))
           )}
         </CardHeader>
-        <CardHeader>
+        <CardHeader className="bottomHalf">
           <CardTitle>
             {unlockedEntries.length === 0
               ? "Unlocked entries:"
@@ -149,10 +177,4 @@ export default function Entries(): JSX.Element {
       </ScrollArea>
     </Card>
   );
-}
-
-// Helper function to parse date strings in "DD-MM-YYYY" format
-function parseDateString(dateString: string): Date {
-  const [day, month, year] = dateString.split("-").map(Number);
-  return new Date(year, month - 1, day); // Month is 0-based
 }
