@@ -21,8 +21,20 @@ import {
 import { FaLock, FaLockOpen } from "react-icons/fa";
 import { Button } from "./ui/button";
 import "@/css/Entries.css";
-import { collection, getDocs } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  query,
+  updateDoc,
+  where,
+} from "firebase/firestore";
 import { auth, db } from "@/Firebase";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { cn } from "@/lib/utils";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { Calendar } from "./ui/calendar";
+import { useToast } from "./ui/use-toast";
 
 interface Entry {
   created: Date;
@@ -31,53 +43,76 @@ interface Entry {
 }
 
 export default function Entries(): JSX.Element {
-  const [entries, setEntries] = useState<Entry[]>([]);
   const [lockedEntries, setLockedEntries] = useState<Entry[]>([]);
   const [unlockedEntries, setUnlockedEntries] = useState<Entry[]>([]);
+  const [date, setDate] = useState<Date>();
+
+  function setDateHandler(amount: number) {
+    const newDate = new Date();
+    newDate.setMonth(newDate.getMonth() + amount);
+    setDate(newDate);
+  }
+
+  const currentDate = new Date();
+
+  // Function to fetch entries
+  async function fetchEntries() {
+    if (auth.currentUser) {
+      const entryCollection = collection(
+        db,
+        "users",
+        auth.currentUser.uid,
+        "entries"
+      );
+      const querySnapshot = await getDocs(entryCollection);
+      const fetchedEntries: Entry[] = [];
+
+      querySnapshot.forEach((doc) => {
+        const entryData = doc.data();
+        fetchedEntries.push({
+          text: entryData.text,
+          created: entryData.created.toDate(),
+          locked: entryData.locked.toDate(),
+        });
+      });
+
+      // Sort the entries based on the locked date
+      const sortedEntries = fetchedEntries.sort(
+        (a, b) => a.locked.getTime() - b.locked.getTime()
+      );
+
+      // Separate entries based on locked date
+      const locked = sortedEntries.filter(
+        (entry) => entry.locked > currentDate
+      );
+      const unlocked = sortedEntries.filter(
+        (entry) => entry.locked <= currentDate
+      );
+
+      setLockedEntries(locked);
+      setUnlockedEntries(unlocked);
+    }
+  }
 
   useEffect(() => {
-    const currentDate = new Date();
-
-    async function fetchEntries() {
-      if (auth.currentUser) {
-        const entryCollection = collection(
-          db,
-          "users",
-          auth.currentUser.uid,
-          "entries"
-        );
-        const querySnapshot = await getDocs(entryCollection);
-        const fetchedEntries: Entry[] = [];
-
-        querySnapshot.forEach((doc) => {
-          const entryData = doc.data();
-          fetchedEntries.push({
-            text: entryData.text,
-            created: entryData.created.toDate(), // Convert Firestore timestamp to Date
-            locked: entryData.locked.toDate(), // Convert Firestore timestamp to Date
-          });
-        });
-
-        setEntries(fetchedEntries);
+    // Listen for changes in authentication state
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        // User is signed in
+        fetchEntries();
+      } else {
+        // User is signed out
+        // You may want to clear the entries or perform other actions
+        setLockedEntries([]);
+        setUnlockedEntries([]);
       }
-    }
+    });
 
-    fetchEntries();
+    // Cleanup the subscription when the component unmounts
+    return () => unsubscribe();
+  }, []);
 
-    // Sort the entries based on the locked date
-    const sortedEntries = entries.sort(
-      (a, b) => a.locked.getTime() - b.locked.getTime()
-    );
-
-    // Separate entries based on locked date
-    const locked = sortedEntries.filter((entry) => entry.locked > currentDate);
-    const unlocked = sortedEntries.filter(
-      (entry) => entry.locked <= currentDate
-    );
-
-    setLockedEntries(locked);
-    setUnlockedEntries(unlocked);
-  }, [entries]);
+  const { toast } = useToast();
 
   return (
     <Card className="h-full flex flex-col">
@@ -137,7 +172,110 @@ export default function Entries(): JSX.Element {
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Lock Again</AlertDialogCancel>
+                    <AlertDialog>
+                      <AlertDialogTrigger>
+                        <AlertDialogCancel>Lock Again</AlertDialogCancel>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            Are you absolutely sure?
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Once this entry is locked, you wont be able to
+                            unlock it again... make sure you wrote everything on
+                            your mind.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <div className="flex flex-col gap-2 w-[65%]">
+                          <p>Pick an unlock date:</p>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant={"outline"}
+                                className={cn(
+                                  "w-full justify-start text-left font-normal",
+                                  !date && "text-muted-foreground"
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {date ? (
+                                  format(date, "PPP")
+                                ) : (
+                                  <span>Pick a date</span>
+                                )}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                              <Calendar
+                                mode="single"
+                                selected={date}
+                                onSelect={setDate}
+                                initialFocus
+                                disabled={(date) => date < new Date()}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <div className="w-full flex justify-between">
+                            <Button
+                              variant="outline"
+                              className="w-[32.5%]"
+                              onClick={() => setDateHandler(3)}
+                            >
+                              3 Months
+                            </Button>
+                            <Button
+                              variant="outline"
+                              className="w-[32.5%]"
+                              onClick={() => setDateHandler(6)}
+                            >
+                              6 Months
+                            </Button>
+                            <Button
+                              variant="outline"
+                              className="w-[32.5%]"
+                              onClick={() => setDateHandler(12)}
+                            >
+                              1 Year
+                            </Button>
+                          </div>
+                        </div>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={async () => {
+                              if (auth.currentUser) {
+                                try {
+                                  const q = query(
+                                    collection(
+                                      db,
+                                      "users",
+                                      auth.currentUser.uid,
+                                      "entries"
+                                    ),
+                                    where("created", "==", entry.created)
+                                  );
+                                  const snap = await getDocs(q);
+                                  snap.forEach(async (doc) => {
+                                    await updateDoc(doc.ref, {
+                                      locked: date,
+                                    });
+                                  });
+                                  toast({
+                                    title: `Entry has been relocked until ${date?.toLocaleDateString()}!`,
+                                  });
+                                  fetchEntries();
+                                } catch (e) {
+                                  return e;
+                                }
+                              }
+                            }}
+                          >
+                            Re-Lock
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                     <AlertDialogAction>Close</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>

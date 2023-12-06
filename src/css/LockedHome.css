@@ -1,0 +1,33 @@
+.fa-lock {
+    width: 120px;
+    height: 140px;
+    transform: rotate(0deg);
+    /* Initial rotation */
+    animation: lock 4s infinite;
+}
+
+.text {
+    margin-top: 3vh;
+}
+
+.text h1 {
+    font-size: 3.7vw;
+    font-weight: 700;
+}
+
+@keyframes lock {
+
+    6.25%,
+    18.75% {
+        transform: rotate(15deg);
+    }
+
+    12.5%,
+    25% {
+        transform: rotate(-15deg);
+    }
+
+    31.25% {
+        transform: rotate(-0deg);
+    }
+}

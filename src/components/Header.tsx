@@ -34,28 +34,29 @@ export default function Header() {
     <header>
       <h1>My Journal</h1>
       <div className="actionButtons">
-        <AlertDialog>
-          <AlertDialogTrigger>
-            <Button variant="ghost">
-              <RxHamburgerMenu className="scale-150" />
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete your
-                account and remove your data from our servers.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={signOutWithGoogle}>
-                Sign Out
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        {isLogged ? (
+          <AlertDialog>
+            <AlertDialogTrigger>
+              <Button variant="ghost">
+                <RxHamburgerMenu className="scale-150" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Settings</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Here you can change the theme and sign out.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={signOutWithGoogle}>
+                  Sign Out
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        ) : null}
         {isLogged ? (
           <Avatar className="border">
             <AvatarImage src={auth.currentUser?.photoURL || ""} />
